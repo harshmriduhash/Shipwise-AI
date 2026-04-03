@@ -1,7 +1,10 @@
 import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import Navbar from "@/components/landing/Navbar";
 import Footer from "@/components/landing/Footer";
+import ScrollReveal from "@/components/ui/ScrollReveal";
 
 const plans = [
   {
@@ -34,46 +37,63 @@ const plans = [
 ];
 
 const Pricing = () => {
+  const navigate = useNavigate();
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <section className="pt-32 pb-20 px-6">
-        <div className="container mx-auto max-w-5xl">
-          <div className="text-center mb-16">
-            <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
-              Save hours every sprint.<br /><span className="gradient-text">Reduce release risk.</span>
-            </h1>
-            <p className="text-lg text-muted-foreground max-w-xl mx-auto">
-              Simple pricing that scales with your team. Start free, upgrade when you're ready.
-            </p>
-          </div>
+      <section className="pt-28 pb-20 px-6">
+        <div className="container mx-auto max-w-4xl">
+          <ScrollReveal>
+            <div className="text-center mb-14">
+              <p className="text-xs font-medium text-primary uppercase tracking-wider mb-3">Pricing</p>
+              <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-3 tracking-tight">
+                Save hours every sprint.<br /><span className="gradient-text">Reduce release risk.</span>
+              </h1>
+              <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                Simple pricing that scales with your team. Start free, upgrade when you're ready.
+              </p>
+            </div>
+          </ScrollReveal>
 
-          <div className="grid md:grid-cols-3 gap-6">
-            {plans.map((plan) => (
-              <div key={plan.name} className={`glass rounded-2xl p-8 flex flex-col ${plan.highlighted ? "ring-2 ring-primary glow relative" : ""}`}>
-                {plan.highlighted && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs font-semibold px-3 py-1 rounded-full">
-                    Most Popular
+          <div className="grid md:grid-cols-3 gap-4">
+            {plans.map((plan, i) => (
+              <ScrollReveal key={plan.name} delay={i * 0.1}>
+                <motion.div
+                  whileHover={{ y: -4 }}
+                  className={`glass rounded-xl p-6 flex flex-col h-full ${plan.highlighted ? "ring-1 ring-primary/50 relative" : ""}`}
+                >
+                  {plan.highlighted && (
+                    <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-[10px] font-semibold px-2.5 py-0.5 rounded-full">
+                      Most Popular
+                    </div>
+                  )}
+                  <h3 className="text-sm font-semibold text-foreground">{plan.name}</h3>
+                  <div className="mt-3 mb-1.5">
+                    <span className="text-3xl font-bold text-foreground">{plan.price}</span>
+                    <span className="text-xs text-muted-foreground">{plan.period}</span>
                   </div>
-                )}
-                <h3 className="text-lg font-semibold text-foreground">{plan.name}</h3>
-                <div className="mt-4 mb-2">
-                  <span className="text-4xl font-bold text-foreground">{plan.price}</span>
-                  <span className="text-sm text-muted-foreground">{plan.period}</span>
-                </div>
-                <p className="text-sm text-muted-foreground mb-6">{plan.description}</p>
-                <ul className="space-y-3 mb-8 flex-1">
-                  {plan.features.map((f) => (
-                    <li key={f} className="flex items-center gap-2 text-sm text-foreground">
-                      <Check className="w-4 h-4 text-success shrink-0" />
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-                <Button className={plan.highlighted ? "glow" : ""} variant={plan.highlighted ? "default" : "outline"} size="lg">
-                  {plan.cta}
-                </Button>
-              </div>
+                  <p className="text-xs text-muted-foreground mb-5">{plan.description}</p>
+                  <ul className="space-y-2 mb-6 flex-1">
+                    {plan.features.map((f) => (
+                      <li key={f} className="flex items-center gap-2 text-xs text-foreground">
+                        <Check className="w-3.5 h-3.5 text-primary shrink-0" />
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+                  <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                    <Button
+                      className={`w-full ${plan.highlighted ? "glow-sm" : ""}`}
+                      variant={plan.highlighted ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => navigate("/auth")}
+                    >
+                      {plan.cta}
+                    </Button>
+                  </motion.div>
+                </motion.div>
+              </ScrollReveal>
             ))}
           </div>
         </div>
