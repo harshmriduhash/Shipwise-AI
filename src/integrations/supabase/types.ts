@@ -38,6 +38,148 @@ export type Database = {
         }
         Relationships: []
       }
+      pull_requests: {
+        Row: {
+          additions: number | null
+          ai_risk_integration: number | null
+          ai_risk_logic: number | null
+          ai_risk_regression: number | null
+          ai_summary: string | null
+          ai_verdict: string | null
+          ai_verdict_message: string | null
+          author: string | null
+          branch: string | null
+          created_at: string
+          deletions: number | null
+          files_changed: number | null
+          github_pr_number: number | null
+          id: string
+          repo_id: string
+          risk_score: number | null
+          status: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          additions?: number | null
+          ai_risk_integration?: number | null
+          ai_risk_logic?: number | null
+          ai_risk_regression?: number | null
+          ai_summary?: string | null
+          ai_verdict?: string | null
+          ai_verdict_message?: string | null
+          author?: string | null
+          branch?: string | null
+          created_at?: string
+          deletions?: number | null
+          files_changed?: number | null
+          github_pr_number?: number | null
+          id?: string
+          repo_id: string
+          risk_score?: number | null
+          status?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          additions?: number | null
+          ai_risk_integration?: number | null
+          ai_risk_logic?: number | null
+          ai_risk_regression?: number | null
+          ai_summary?: string | null
+          ai_verdict?: string | null
+          ai_verdict_message?: string | null
+          author?: string | null
+          branch?: string | null
+          created_at?: string
+          deletions?: number | null
+          files_changed?: number | null
+          github_pr_number?: number | null
+          id?: string
+          repo_id?: string
+          risk_score?: number | null
+          status?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pull_requests_repo_id_fkey"
+            columns: ["repo_id"]
+            isOneToOne: false
+            referencedRelation: "repositories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      repositories: {
+        Row: {
+          created_at: string
+          default_branch: string
+          description: string | null
+          github_url: string
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          default_branch?: string
+          description?: string | null
+          github_url: string
+          id?: string
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          default_branch?: string
+          description?: string | null
+          github_url?: string
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      test_suggestions: {
+        Row: {
+          completed: boolean
+          created_at: string
+          description: string
+          id: string
+          pr_id: string
+          priority: string
+        }
+        Insert: {
+          completed?: boolean
+          created_at?: string
+          description: string
+          id?: string
+          pr_id: string
+          priority?: string
+        }
+        Update: {
+          completed?: boolean
+          created_at?: string
+          description?: string
+          id?: string
+          pr_id?: string
+          priority?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "test_suggestions_pr_id_fkey"
+            columns: ["pr_id"]
+            isOneToOne: false
+            referencedRelation: "pull_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
