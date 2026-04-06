@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Plus, Trash2, Github, Loader2, ExternalLink, Zap, LogOut, FolderGit2 } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Github, Loader2, ExternalLink, Zap, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
