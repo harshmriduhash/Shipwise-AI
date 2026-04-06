@@ -175,7 +175,7 @@ const Settings = () => {
             </div>
           ) : repos.length === 0 ? (
             <EmptyState
-              icon={FolderGit2}
+              type="generic"
               title="No repositories connected"
               description="Connect a GitHub repository to start analyzing pull requests with AI."
               action={{ label: "Connect Repository", onClick: () => setShowForm(true) }}
