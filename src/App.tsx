@@ -12,6 +12,7 @@ import Pricing from "./pages/Pricing.tsx";
 import Security from "./pages/Security.tsx";
 import Auth from "./pages/Auth.tsx";
 import PRDetail from "./pages/PRDetail.tsx";
+import Settings from "./pages/Settings.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
