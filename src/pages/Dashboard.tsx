@@ -104,6 +104,9 @@ const Dashboard = () => {
               <p className="text-xs text-muted-foreground mt-0.5">main branch · last synced 2m ago</p>
             </div>
             <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => navigate("/settings")} className="border-border/50 text-muted-foreground text-xs h-8">
+                <Github className="w-3.5 h-3.5 mr-1.5" /> Repositories
+              </Button>
               <Button variant="outline" size="sm" className="border-border/50 text-muted-foreground text-xs h-8">
                 <Bell className="w-3.5 h-3.5 mr-1.5" /> Alerts
               </Button>
