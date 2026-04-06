@@ -84,6 +84,9 @@ const Dashboard = () => {
             <span className="text-xs text-muted-foreground hidden sm:inline">acme-corp/web-platform</span>
           </div>
           <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={() => navigate("/settings")} className="text-muted-foreground h-8 w-8 p-0">
+              <Settings className="w-3.5 h-3.5" />
+            </Button>
             <span className="text-xs text-muted-foreground hidden sm:inline">{user?.email}</span>
             <Button variant="ghost" size="sm" onClick={signOut} className="text-muted-foreground h-8 w-8 p-0">
               <LogOut className="w-3.5 h-3.5" />
