@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Shield, GitPullRequest, TestTube, Activity,
   ChevronRight, AlertTriangle, CheckCircle, Clock,
-  FileCode, Bell, LogOut, Zap, ArrowRight
+  FileCode, Bell, LogOut, Zap, ArrowRight, Settings, Github
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
