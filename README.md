@@ -56,6 +56,12 @@ SHIPWISE.ai is an **AI-powered Quality Intelligence OS** that sits between your 
    - Tracks test coverage against suggestions
    - Provides clear release readiness metrics
 
+4. **AI Code Review Comments** — Line-level feedback:
+   - Security vulnerabilities detected
+   - Performance anti-patterns flagged
+   - Logic errors and edge cases identified
+   - Severity-coded: error, warning, info
+
 ### Does It Save Time? ⏱️
 **Yes — an average of 18 hours per sprint per team.**
 - Eliminates manual code review for risk assessment
@@ -67,6 +73,75 @@ SHIPWISE.ai is an **AI-powered Quality Intelligence OS** that sits between your 
 - Prevents escaped bugs (each production bug costs $3,000–$15,000 to fix)
 - Reduces over-testing of low-risk changes
 - Faster releases = faster revenue
+
+---
+
+## 👤 User Journey
+
+### Step-by-Step Flow
+
+```
+1. SIGN UP          → Create account at /auth (email + password)
+2. VERIFY EMAIL     → Confirm via email link
+3. SIGN IN          → Login redirects to /dashboard
+4. CONNECT REPO     → Go to Settings (/settings), paste GitHub repo URL
+5. VIEW DASHBOARD   → See release readiness, risk scores, activity feed
+6. CLICK A PR       → Navigate to /pr/:id for deep AI analysis
+7. REVIEW AI OUTPUT → Risk breakdown, test suggestions, code review comments
+8. SHIP OR HOLD     → Act on the AI's Safe/Caution/Block verdict
+```
+
+### Detailed Walkthrough
+
+#### 1. Landing Page (`/`)
+- Value proposition with animated hero section
+- Feature showcase with scroll-reveal animations
+- Pricing tiers comparison
+- CTA to sign up
+
+#### 2. Authentication (`/auth`)
+- Email + password signup with full name
+- Email verification required before first sign-in
+- Sign-in form with error handling
+- Redirect to `/dashboard` on successful login
+
+#### 3. Dashboard (`/dashboard`) — Protected Route
+- **Top Bar**: Logo, repo context, settings gear, user email, sign out
+- **Release Readiness Card**: Ship/Caution/Block status with open PR count, high-risk count, tests passing percentage
+- **Overall Risk Score**: Circular progress indicator (0–100) with breakdown into Logic, Integration, and Regression sub-scores
+- **Sprint Stats**: PRs Analyzed, Bugs Caught, Tests Suggested, Time Saved
+- **PR Insights List**: Each PR shows title, author, time, risk score badge, test count — click to drill into detail
+- **Test Recommendations**: Prioritized checklist of AI-suggested tests with checkbox completion tracking
+- **Activity Feed**: Real-time log of risk changes, test generations, successful ships
+- **Repositories Button**: Navigate to Settings to connect/manage GitHub repos
+
+#### 4. Settings (`/settings`) — Protected Route
+- **Connect Repository**: Paste any public GitHub repository URL (e.g. `https://github.com/facebook/react`)
+- **Repository List**: All connected repos with name, URL, external link, delete action
+- **Empty State**: Illustrated prompt to connect first repo when no repos exist
+- URL validation ensures only valid GitHub URLs are accepted
+
+#### 5. PR Detail (`/pr/:id`) — Protected Route
+- **Real-time AI Analysis**: Calls the `analyze-pr` edge function on page load
+- **AI Thinking Animation**: Displayed while the AI processes the PR diff
+- **Risk Score Badge**: Large, color-coded overall risk score (green/yellow/red)
+- **AI Summary**: 2–3 sentence natural language summary of what the PR does
+- **Risk Breakdown**: Three progress bars — Logic Risk, Integration Risk, Regression Risk
+- **AI Code Review**: File-level comments with severity badges (error/warning/info)
+- **Changed Files List**: Each file with additions/deletions count
+- **Test Suggestions**: Prioritized list of tests the AI recommends writing
+- **AI Verdict**: Final Ship/Review/Block recommendation with explanation
+- **Re-analyze Button**: Manually trigger a fresh AI analysis
+
+#### 6. Pricing (`/pricing`)
+- Three tiers: Starter (free), Pro ($49/mo), Enterprise (custom)
+- Feature comparison grid
+- CTA buttons for each tier
+
+#### 7. Security (`/security`)
+- SOC 2 compliance information
+- Data handling practices
+- Infrastructure security details
 
 ---
 
@@ -151,6 +226,36 @@ SHIPWISE.ai is an **AI-powered Quality Intelligence OS** that sits between your 
         └──────────┘   └──────────┘   └──────────┘
 ```
 
+### Request Flow: PR Analysis
+
+```
+User clicks PR → Frontend calls supabase.functions.invoke("analyze-pr")
+    │
+    ▼
+Edge Function receives PR metadata + diff content
+    │
+    ▼
+Constructs system prompt (SHIPWISE.ai expert reviewer persona)
+    │
+    ▼
+Sends to AI Gateway (Google Gemini 3 Flash Preview)
+    │
+    ▼
+AI returns structured JSON:
+  {
+    overallRisk: 0-100,
+    riskBreakdown: { logic, integration, regression },
+    summary: "...",
+    verdict: "safe_to_ship" | "review_recommended" | "high_risk_block",
+    verdictMessage: "...",
+    tests: [{ text, priority }],
+    reviewComments: [{ file, comment, severity }]
+  }
+    │
+    ▼
+Frontend renders risk breakdown, test suggestions, code review, verdict
+```
+
 ### Risk Scoring Algorithm
 
 ```
@@ -171,34 +276,51 @@ Each sub-score considers:
 ### Database Schema
 
 ```sql
-profiles (id, full_name, avatar_url)
-  └── 1:1 with auth.users (auto-created on signup)
+profiles (id, full_name, avatar_url, created_at, updated_at)
+  └── 1:1 with auth.users (auto-created on signup via trigger)
 
-repositories (id, user_id, github_url, name)
-  └── PRs analyzed per repo
+repositories (id, user_id, github_url, name, description, default_branch, created_at, updated_at)
+  └── User-owned GitHub repo connections
+  └── RLS: users can only CRUD their own repos
 
-pull_requests (id, repo_id, github_pr_id, title, risk_score, status)
-  └── Individual PR analysis results
+pull_requests (id, repo_id, github_pr_number, title, author, branch, risk_score, status,
+               files_changed, additions, deletions, ai_summary, ai_verdict,
+               ai_verdict_message, ai_risk_logic, ai_risk_integration, ai_risk_regression,
+               created_at, updated_at)
+  └── PR analysis results linked to repositories
+  └── RLS: users can only access PRs belonging to their repos
 
-test_suggestions (id, pr_id, description, priority, completed)
+test_suggestions (id, pr_id, description, priority, completed, created_at)
   └── AI-generated test recommendations per PR
+  └── RLS: users can only access suggestions for their PRs
+```
+
+### Authentication Flow
+
+```
+Sign Up → Email sent → User clicks verify link → Account activated
+Sign In → JWT issued → Stored in browser → Sent with every API call
+Auth State → onAuthStateChange listener → Updates React context
+Protected Routes → ProtectedRoute component checks auth → Redirects to /auth if not logged in
+Sign Out → JWT cleared → Redirect to landing page
 ```
 
 ---
 
 ## 🛠️ Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Frontend | React 18, TypeScript 5, Vite 5 |
-| Styling | Tailwind CSS 3, shadcn/ui |
-| Animations | Framer Motion |
-| State | TanStack Query |
-| Backend | Lovable Cloud |
-| Auth | JWT-based authentication |
-| Database | PostgreSQL + Row Level Security |
-| Edge Functions | Deno runtime |
-| AI | LLM-powered analysis engine |
+| Layer | Technology | Purpose |
+|-------|-----------|---------|
+| Frontend | React 18, TypeScript 5, Vite 5 | SPA with type safety and fast HMR |
+| Styling | Tailwind CSS 3, shadcn/ui | Utility-first CSS with pre-built components |
+| Animations | Framer Motion | Page transitions, scroll reveals, micro-interactions |
+| State | TanStack Query | Server state caching and synchronization |
+| Backend | Lovable Cloud (PostgreSQL) | Managed database with auto-generated API |
+| Auth | JWT-based (email + password) | Secure session management |
+| Database | PostgreSQL + Row Level Security | Data isolation per user at DB level |
+| Edge Functions | Deno runtime | Serverless AI analysis endpoint |
+| AI Engine | Google Gemini 3 Flash Preview | LLM-powered code analysis and risk scoring |
+| Testing | Vitest + Playwright | Unit and E2E testing |
 
 ---
 
@@ -206,32 +328,97 @@ test_suggestions (id, pr_id, description, priority, completed)
 
 ```
 src/
-├── assets/                # Static assets
 ├── components/
-│   ├── landing/           # Landing page components (Navbar, Hero, Features, CTA, Footer)
-│   ├── ui/                # Reusable UI components (shadcn/ui + custom)
-│   │   ├── AIThinking     # AI processing animation
-│   │   ├── EmptyState     # Zero-data state component
-│   │   ├── PageTransition # Route transition wrapper
-│   │   ├── ProgressBar    # Animated progress bars
-│   │   ├── ScrollReveal   # Scroll-triggered animations
-│   │   ├── SkeletonCard   # Shimmer skeleton loaders
-│   │   └── SuccessAnimation # Status feedback animations
-│   ├── ProtectedRoute.tsx # Auth guard for routes
+│   ├── landing/               # Landing page sections
+│   │   ├── Navbar.tsx         # Fixed navigation with auth-aware CTA
+│   │   ├── Hero.tsx           # Animated hero with gradient text
+│   │   ├── Features.tsx       # Feature cards with scroll-reveal
+│   │   ├── CTA.tsx            # Call-to-action section
+│   │   └── Footer.tsx         # Links and copyright
+│   ├── ui/                    # Reusable UI components
+│   │   ├── AIThinking.tsx     # Pulsing dots animation for AI processing
+│   │   ├── EmptyState.tsx     # Illustrated zero-data states
+│   │   ├── PageTransition.tsx # Framer Motion route wrapper
+│   │   ├── ProgressBar.tsx    # Animated progress bars with variants
+│   │   ├── ScrollReveal.tsx   # Intersection Observer scroll animations
+│   │   ├── SkeletonCard.tsx   # Shimmer loading placeholders
+│   │   ├── SuccessAnimation.tsx # Animated success/warning/error states
+│   │   └── [40+ shadcn/ui components]
+│   ├── NavLink.tsx            # Active-aware navigation link
+│   └── ProtectedRoute.tsx     # Auth guard HOC
 ├── contexts/
-│   └── AuthContext.tsx     # Authentication state provider
-├── integrations/           # Backend client (auto-generated)
+│   └── AuthContext.tsx        # Auth state provider (user, session, signOut)
+├── hooks/
+│   ├── use-mobile.tsx         # Responsive breakpoint hook
+│   └── use-toast.ts           # Toast notification hook
+├── integrations/
+│   └── supabase/
+│       ├── client.ts          # Auto-generated Supabase client
+│       └── types.ts           # Auto-generated TypeScript types
 ├── pages/
-│   ├── Index.tsx           # Landing page
-│   ├── Auth.tsx            # Login / Signup
-│   ├── Dashboard.tsx       # Main dashboard (protected)
-│   ├── PRDetail.tsx        # PR analysis detail (protected)
-│   ├── Pricing.tsx         # Pricing plans
-│   └── Security.tsx        # Security overview
-├── App.tsx                 # Router & providers
-├── index.css               # Design system tokens
-└── main.tsx                # Entry point
+│   ├── Index.tsx              # Landing page (public)
+│   ├── Auth.tsx               # Login / Signup (public)
+│   ├── Dashboard.tsx          # Release dashboard (protected)
+│   ├── PRDetail.tsx           # AI-powered PR analysis (protected)
+│   ├── Settings.tsx           # Repository management (protected)
+│   ├── Pricing.tsx            # Pricing tiers (public)
+│   ├── Security.tsx           # Security info (public)
+│   └── NotFound.tsx           # 404 page
+├── App.tsx                    # Router, providers, route definitions
+├── index.css                  # Design system tokens (CSS custom properties)
+└── main.tsx                   # React entry point
+
+supabase/
+├── config.toml                # Project configuration
+└── functions/
+    └── analyze-pr/
+        └── index.ts           # AI analysis edge function (Deno)
 ```
+
+---
+
+## 🎨 Design System
+
+### Tokens (CSS Custom Properties)
+
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--background` | `160 20% 5%` | Page backgrounds |
+| `--foreground` | `160 10% 92%` | Primary text |
+| `--primary` | `160 84% 39%` | Emerald accent (buttons, links, highlights) |
+| `--secondary` | `160 15% 12%` | Card backgrounds, subtle fills |
+| `--muted` | `160 10% 18%` | Disabled text, borders |
+| `--destructive` | `0 84% 60%` | Error states, high-risk indicators |
+| `--warning` | `38 92% 50%` | Medium-risk, caution states |
+
+### Visual Language
+- **Theme**: Dark-first with glassmorphism (backdrop-blur, subtle borders)
+- **Typography**: Inter font, clean and modern
+- **Animations**: Framer Motion for page transitions, scroll reveals, micro-interactions
+- **Glow Effects**: Primary-colored box-shadows on CTAs and active elements
+- **Grid Pattern**: Dot-grid background overlay for depth
+
+---
+
+## 🔒 Security Architecture
+
+### Row Level Security (RLS)
+Every table has RLS enabled. Policies ensure:
+- Users can only read/write their own data
+- PR data is scoped through repository ownership
+- Test suggestions are scoped through PR → Repository ownership chain
+
+### Authentication
+- Email + password with email verification
+- JWT tokens with automatic refresh
+- Session managed via `onAuthStateChange` listener
+- Protected routes redirect unauthenticated users
+
+### Edge Functions
+- CORS headers on all responses
+- Input validation on request body
+- Error handling with appropriate HTTP status codes (429, 402, 500)
+- No raw SQL execution — all queries through typed Supabase client
 
 ---
 
@@ -240,9 +427,13 @@ src/
 ### Pre-Launch Verification
 - [x] Landing page with clear value proposition
 - [x] Authentication (signup, signin, signout)
+- [x] Email verification on signup
 - [x] Protected dashboard route
+- [x] Protected PR detail route
+- [x] Protected settings route
 - [x] Core dashboard with risk scoring UI
-- [x] PR detail view with risk breakdown
+- [x] PR detail view with AI-powered risk breakdown
+- [x] Settings page for repository management
 - [x] Pricing page with tier comparison
 - [x] Security page with compliance info
 - [x] Mobile responsive design
@@ -250,6 +441,7 @@ src/
 - [x] Error handling with toast notifications
 - [x] Empty states for zero-data views
 - [x] Page transition animations
+- [x] AI thinking animation during analysis
 - [ ] Custom domain configured
 - [ ] Analytics integration (PostHog/Mixpanel)
 - [ ] Error monitoring (Sentry)
@@ -261,8 +453,10 @@ src/
 
 ### Infrastructure & Reliability
 - [x] Database with Row Level Security (RLS)
-- [x] Auto-profile creation on signup
-- [x] Secure authentication flow
+- [x] Auto-profile creation on signup (trigger)
+- [x] Secure authentication flow with email verification
+- [x] Edge function for AI analysis with error handling
+- [x] CORS configuration on edge functions
 - [ ] Rate limiting on API endpoints
 - [ ] Database backups configured
 - [ ] CDN for static assets
@@ -274,9 +468,11 @@ src/
 - [ ] Log aggregation and alerting
 
 ### Security
-- [x] RLS policies on all user data
+- [x] RLS policies on all user data tables (profiles, repositories, pull_requests, test_suggestions)
 - [x] JWT-based authentication
-- [x] Input validation on forms
+- [x] Input validation on forms (email format, GitHub URL format)
+- [x] CORS headers on edge functions
+- [x] No raw SQL in edge functions
 - [ ] OWASP Top 10 audit
 - [ ] Penetration testing
 - [ ] SOC 2 Type II certification
@@ -293,12 +489,13 @@ src/
 - [x] TypeScript strict mode
 - [x] Component-based architecture
 - [x] Design system with semantic tokens
+- [x] Vitest + Playwright test setup
+- [x] ESLint code quality linting
 - [ ] CI/CD pipeline (GitHub Actions)
-- [ ] Automated testing (unit + integration)
+- [ ] Automated testing in CI
 - [ ] Code review process documented
 - [ ] Staging environment
 - [ ] Feature flags system
-- [ ] Database migration workflow
 - [ ] API versioning strategy
 
 ### Team Processes
@@ -313,43 +510,53 @@ src/
 ## 📋 MVP_LAUNCH_CHECKLIST
 
 ### Minimum Viable Product Requirements
-- [x] User authentication (email + password)
+- [x] User authentication (email + password + email verification)
 - [x] Dashboard with risk data visualization
 - [x] PR list with risk scores
-- [x] PR detail page with breakdown
-- [x] Test suggestions display
-- [x] Release readiness indicator
-- [ ] GitHub App installation flow
-- [ ] Real PR webhook processing
-- [ ] Actual AI risk scoring (not mock data)
-- [ ] Real test suggestion generation
+- [x] PR detail page with AI-powered breakdown
+- [x] AI-generated test suggestions with priority levels
+- [x] AI code review comments with severity
+- [x] Release readiness indicator (Ship/Caution/Block)
+- [x] Repository connection (paste GitHub URL)
+- [x] Repository management (add, view, delete)
+- [x] Re-analyze button for fresh AI analysis
+- [ ] GitHub App installation flow (webhook-based)
+- [ ] Real PR data from GitHub API (currently demo data)
+- [ ] Persist AI analysis results to database
 - [ ] GitHub PR comment integration
 - [ ] Onboarding flow for new users
 - [ ] Billing integration (Stripe)
 - [ ] Usage tracking and limits enforcement
 
-### User Experience
+### UX Polish
 - [x] Skeleton loaders for async content
-- [x] AI thinking animation
+- [x] AI thinking animation (pulsing dots)
 - [x] Scroll reveal animations
-- [x] Page transition animations
+- [x] Page transition animations (Framer Motion)
 - [x] Hover cards for PR previews
-- [x] Success/error state animations
-- [x] Empty state illustrations
-- [x] Progress indicators (animated bars)
-- [x] Micro-interactions on buttons/cards
+- [x] Success/warning/error state animations
+- [x] Empty state illustrations with CTAs
+- [x] Progress indicators (animated bars with color variants)
+- [x] Micro-interactions on buttons/cards (hover scale, slide)
 - [x] Notification toasts (sonner)
-- [x] Mobile responsive
+- [x] Mobile responsive layout
+- [x] Glassmorphism design language
+- [x] Color-coded risk badges (green/yellow/red)
 
 ---
 
 ## 📋 READY_CHECKLIST
 
 ### Go-Live Readiness (50+ Users)
-- [x] Authentication works end-to-end
-- [x] Protected routes redirect unauthenticated users
+- [x] Authentication works end-to-end (signup → verify → signin → dashboard)
+- [x] Protected routes redirect unauthenticated users to /auth
 - [x] Responsive design (mobile + desktop)
-- [x] Loading states prevent blank screens
+- [x] Loading states prevent blank screens (skeleton loaders)
+- [x] Error states with retry actions
+- [x] Empty states guide users to next action
+- [x] Toast notifications for success/error feedback
+- [x] AI analysis returns structured, actionable results
+- [x] Repository connection with URL validation
 - [ ] Load testing passed (100 concurrent users)
 - [ ] Database indexes optimized
 - [ ] Image optimization and lazy loading
@@ -417,11 +624,31 @@ src/
 ## 🚀 Getting Started
 
 ```bash
+# Clone the repository
 git clone https://github.com/shipwise/shipwise-ai.git
 cd shipwise-ai
+
+# Install dependencies
 npm install
+
+# Start development server
 npm run dev
+
+# Run tests
+npm test
+
+# Build for production
+npm run build
 ```
+
+### Environment Variables
+The following environment variables are auto-configured:
+- `VITE_SUPABASE_URL` — Backend API URL
+- `VITE_SUPABASE_PUBLISHABLE_KEY` — Public API key
+- `VITE_SUPABASE_PROJECT_ID` — Project identifier
+
+### Edge Function Secrets
+- `LOVABLE_API_KEY` — AI gateway authentication (auto-provisioned)
 
 ---
 

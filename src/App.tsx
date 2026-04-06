@@ -12,6 +12,7 @@ import Pricing from "./pages/Pricing.tsx";
 import Security from "./pages/Security.tsx";
 import Auth from "./pages/Auth.tsx";
 import PRDetail from "./pages/PRDetail.tsx";
+import Settings from "./pages/Settings.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -29,6 +30,7 @@ const App = () => (
               <Route path="/auth" element={<Auth />} />
               <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="/pr/:id" element={<ProtectedRoute><PRDetail /></ProtectedRoute>} />
+              <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
               <Route path="/pricing" element={<Pricing />} />
               <Route path="/security" element={<Security />} />
               <Route path="*" element={<NotFound />} />

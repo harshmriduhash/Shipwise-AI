@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Shield, GitPullRequest, TestTube, Activity,
   ChevronRight, AlertTriangle, CheckCircle, Clock,
-  FileCode, Bell, LogOut, Zap, ArrowRight
+  FileCode, Bell, LogOut, Zap, ArrowRight, Settings, Github
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
@@ -84,6 +84,9 @@ const Dashboard = () => {
             <span className="text-xs text-muted-foreground hidden sm:inline">acme-corp/web-platform</span>
           </div>
           <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={() => navigate("/settings")} className="text-muted-foreground h-8 w-8 p-0">
+              <Settings className="w-3.5 h-3.5" />
+            </Button>
             <span className="text-xs text-muted-foreground hidden sm:inline">{user?.email}</span>
             <Button variant="ghost" size="sm" onClick={signOut} className="text-muted-foreground h-8 w-8 p-0">
               <LogOut className="w-3.5 h-3.5" />
@@ -101,6 +104,9 @@ const Dashboard = () => {
               <p className="text-xs text-muted-foreground mt-0.5">main branch · last synced 2m ago</p>
             </div>
             <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => navigate("/settings")} className="border-border/50 text-muted-foreground text-xs h-8">
+                <Github className="w-3.5 h-3.5 mr-1.5" /> Repositories
+              </Button>
               <Button variant="outline" size="sm" className="border-border/50 text-muted-foreground text-xs h-8">
                 <Bell className="w-3.5 h-3.5 mr-1.5" /> Alerts
               </Button>
