@@ -17,6 +17,8 @@ const Footer = () => {
           <div className="flex items-center gap-6">
             <Link to="/pricing" className="text-xs text-muted-foreground hover:text-foreground transition-colors">Pricing</Link>
             <Link to="/security" className="text-xs text-muted-foreground hover:text-foreground transition-colors">Security</Link>
+            <Link to="/terms" className="text-xs text-muted-foreground hover:text-foreground transition-colors">Terms</Link>
+            <Link to="/privacy" className="text-xs text-muted-foreground hover:text-foreground transition-colors">Privacy</Link>
           </div>
           <p className="text-xs text-muted-foreground">© 2025 SHIPWISE.ai · All rights reserved</p>
         </div>

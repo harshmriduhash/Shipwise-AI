@@ -125,7 +125,9 @@ const Auth = () => {
         </div>
 
         <p className="text-xs text-muted-foreground text-center mt-6">
-          By continuing, you agree to our Terms of Service and Privacy Policy.
+          By continuing, you agree to our{" "}
+          <a href="/terms" className="text-primary hover:underline">Terms of Service</a> and{" "}
+          <a href="/privacy" className="text-primary hover:underline">Privacy Policy</a>.
         </p>
       </motion.div>
     </div>
