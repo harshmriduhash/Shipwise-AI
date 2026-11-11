@@ -14,6 +14,54 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_user_connections: {
+        Row: {
+          connection_key_ciphertext: string
+          connector_id: string
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          connection_key_ciphertext: string
+          connector_id: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          connection_key_ciphertext?: string
+          connector_id?: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      github_webhook_deliveries: {
+        Row: {
+          delivery_id: string
+          event_name: string
+          id: string
+          received_at: string
+        }
+        Insert: {
+          delivery_id: string
+          event_name: string
+          id?: string
+          received_at?: string
+        }
+        Update: {
+          delivery_id?: string
+          event_name?: string
+          id?: string
+          received_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -41,19 +89,28 @@ export type Database = {
       pull_requests: {
         Row: {
           additions: number | null
+          ai_review_comments: Json
           ai_risk_integration: number | null
           ai_risk_logic: number | null
           ai_risk_regression: number | null
           ai_summary: string | null
           ai_verdict: string | null
           ai_verdict_message: string | null
+          analysis_error: string | null
+          analysis_status: string
           author: string | null
+          base_branch: string | null
           branch: string | null
+          changed_files: Json
           created_at: string
           deletions: number | null
           files_changed: number | null
+          github_html_url: string | null
           github_pr_number: number | null
+          github_state: string
+          head_sha: string | null
           id: string
+          last_analyzed_at: string | null
           repo_id: string
           risk_score: number | null
           status: string | null
@@ -62,19 +119,28 @@ export type Database = {
         }
         Insert: {
           additions?: number | null
+          ai_review_comments?: Json
           ai_risk_integration?: number | null
           ai_risk_logic?: number | null
           ai_risk_regression?: number | null
           ai_summary?: string | null
           ai_verdict?: string | null
           ai_verdict_message?: string | null
+          analysis_error?: string | null
+          analysis_status?: string
           author?: string | null
+          base_branch?: string | null
           branch?: string | null
+          changed_files?: Json
           created_at?: string
           deletions?: number | null
           files_changed?: number | null
+          github_html_url?: string | null
           github_pr_number?: number | null
+          github_state?: string
+          head_sha?: string | null
           id?: string
+          last_analyzed_at?: string | null
           repo_id: string
           risk_score?: number | null
           status?: string | null
@@ -83,19 +149,28 @@ export type Database = {
         }
         Update: {
           additions?: number | null
+          ai_review_comments?: Json
           ai_risk_integration?: number | null
           ai_risk_logic?: number | null
           ai_risk_regression?: number | null
           ai_summary?: string | null
           ai_verdict?: string | null
           ai_verdict_message?: string | null
+          analysis_error?: string | null
+          analysis_status?: string
           author?: string | null
+          base_branch?: string | null
           branch?: string | null
+          changed_files?: Json
           created_at?: string
           deletions?: number | null
           files_changed?: number | null
+          github_html_url?: string | null
           github_pr_number?: number | null
+          github_state?: string
+          head_sha?: string | null
           id?: string
+          last_analyzed_at?: string | null
           repo_id?: string
           risk_score?: number | null
           status?: string | null
@@ -117,8 +192,12 @@ export type Database = {
           created_at: string
           default_branch: string
           description: string | null
+          github_owner: string | null
+          github_repo: string | null
+          github_repo_id: number | null
           github_url: string
           id: string
+          is_private: boolean
           name: string
           updated_at: string
           user_id: string
@@ -127,8 +206,12 @@ export type Database = {
           created_at?: string
           default_branch?: string
           description?: string | null
+          github_owner?: string | null
+          github_repo?: string | null
+          github_repo_id?: number | null
           github_url: string
           id?: string
+          is_private?: boolean
           name: string
           updated_at?: string
           user_id: string
@@ -137,8 +220,12 @@ export type Database = {
           created_at?: string
           default_branch?: string
           description?: string | null
+          github_owner?: string | null
+          github_repo?: string | null
+          github_repo_id?: number | null
           github_url?: string
           id?: string
+          is_private?: boolean
           name?: string
           updated_at?: string
           user_id?: string
