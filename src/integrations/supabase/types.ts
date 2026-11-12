@@ -44,21 +44,27 @@ export type Database = {
       github_webhook_deliveries: {
         Row: {
           delivery_id: string
+          error_message: string | null
           event_name: string
           id: string
           received_at: string
+          status: string
         }
         Insert: {
           delivery_id: string
+          error_message?: string | null
           event_name: string
           id?: string
           received_at?: string
+          status?: string
         }
         Update: {
           delivery_id?: string
+          error_message?: string | null
           event_name?: string
           id?: string
           received_at?: string
+          status?: string
         }
         Relationships: []
       }

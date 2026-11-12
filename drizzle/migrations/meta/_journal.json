@@ -8,6 +8,13 @@
       "when": 1794363325502,
       "tag": "0000_github_live_pr_integration",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1794443967508,
+      "tag": "0001_github_pipeline_indexes_and_access",
+      "breakpoints": true
     }
   ]
 }
