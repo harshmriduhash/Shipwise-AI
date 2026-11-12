@@ -1,0 +1,1 @@
+export const GITHUB_SCOPES = ["read:user", "repo", "admin:repo_hook"];
