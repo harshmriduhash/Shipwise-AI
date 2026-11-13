@@ -18,6 +18,7 @@ import Settings from "./pages/Settings.tsx";
 import TermsOfService from "./pages/TermsOfService.tsx";
 import PrivacyPolicy from "./pages/PrivacyPolicy.tsx";
 import NotFound from "./pages/NotFound.tsx";
+import GitHubOAuthReturn from "./pages/GitHubOAuthReturn.tsx";
 
 const queryClient = new QueryClient();
 
@@ -33,6 +34,7 @@ const App = () => (
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/auth" element={<Auth />} />
+                <Route path="/oauth/github/return" element={<GitHubOAuthReturn />} />
                 <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                 <Route path="/pr/:id" element={<ProtectedRoute><PRDetail /></ProtectedRoute>} />
                 <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />

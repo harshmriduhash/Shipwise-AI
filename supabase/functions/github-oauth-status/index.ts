@@ -2,7 +2,7 @@ import { appUserReconnectRequired } from "../_shared/appUserConnector.ts";
 import { deleteConnectionKeyForUser, getConnectionKeyForUser } from "../_shared/appUserConnections.ts";
 import { disconnectAppUser } from "../_shared/disconnectAppUser.ts";
 import { GITHUB_SCOPES } from "../_shared/appUserScopes.ts";
-import { authenticatedUser, errorResponse, jsonResponse, preflightResponse } from "../_shared/http.ts";
+import { authenticatedUser, errorResponse, jsonResponse, preflightResponse, readJson } from "../_shared/http.ts";
 import { callAsAppUser } from "../_shared/appUserConnector.ts";
 
 const gatewayBaseUrl = "https://connector-gateway.lovable.dev";
@@ -10,13 +10,14 @@ const gatewayBaseUrl = "https://connector-gateway.lovable.dev";
 Deno.serve(async (req) => {
   const preflight = preflightResponse(req);
   if (preflight) return preflight;
-  if (req.method !== "GET" && req.method !== "DELETE") return jsonResponse({ error: "Method not allowed" }, 405);
+  if (req.method !== "GET" && req.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405);
   try {
     const user = await authenticatedUser(req);
     if (!user) return jsonResponse({ error: "Sign in to manage GitHub." }, 401);
     const key = await getConnectionKeyForUser(user.id, "github");
     if (!key) return jsonResponse({ connected: false });
-    if (req.method === "DELETE") {
+    const body = req.method === "POST" ? await readJson(req) : {};
+    if (body.disconnect === true) {
       await disconnectAppUser({ gatewayBaseUrl, connectionAPIKey: key, connectorId: "github" });
       await deleteConnectionKeyForUser(user.id, "github");
       return jsonResponse({ connected: false, disconnected: true });
