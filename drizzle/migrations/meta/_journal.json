@@ -15,6 +15,13 @@
       "when": 1794443967508,
       "tag": "0001_github_pipeline_indexes_and_access",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794538457011,
+      "tag": "0002_github_webhook_repository_status",
+      "breakpoints": true
     }
   ]
 }
