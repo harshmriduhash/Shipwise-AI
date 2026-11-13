@@ -1,6 +1,6 @@
 import { generateChatCompletion } from "npm:@lovable.dev/ai-gateway@0.1.11";
 import { adminClient } from "./http.ts";
-import { githubJson, githubRequest } from "./githubApi.ts";
+import { githubJson, githubRequest, publicGitHubJson, publicGitHubRequest } from "./githubApi.ts";
 
 type ChangedFile = { filename: string; status: string; additions: number; deletions: number; patch?: string };
 type PullRequestPayload = {
@@ -45,14 +45,18 @@ function validateAnalysis(value: unknown): Analysis {
 
 export async function analyzeGithubPullRequest(
   repository: { id: string; github_owner: string; github_repo: string },
-  connectionKey: string,
+  connectionKey: string | null,
   pr: PullRequestPayload,
 ) {
   const owner = encodeURIComponent(repository.github_owner);
   const repo = encodeURIComponent(repository.github_repo);
   const basePath = `/repos/${owner}/${repo}/pulls/${pr.number}`;
-  const files = await githubJson<ChangedFile[]>(connectionKey, `${basePath}/files?per_page=100`);
-  const diffResponse = await githubRequest(connectionKey, basePath, "application/vnd.github.diff");
+  const files = connectionKey
+    ? await githubJson<ChangedFile[]>(connectionKey, `${basePath}/files?per_page=100`)
+    : await publicGitHubJson<ChangedFile[]>(`${basePath}/files?per_page=100`);
+  const diffResponse = connectionKey
+    ? await githubRequest(connectionKey, basePath, "application/vnd.github.diff")
+    : await publicGitHubRequest(basePath, "application/vnd.github.diff");
   const diff = (await diffResponse.text()).slice(0, 60_000);
   const selectedFiles = files.slice(0, 100).map(file => ({
     name: file.filename,

@@ -3,6 +3,29 @@ import { GITHUB_SCOPES } from "./appUserScopes.ts";
 
 const GATEWAY_BASE_URL = "https://connector-gateway.lovable.dev";
 
+export async function publicGitHubRequest(path: string, accept = "application/vnd.github+json") {
+  const response = await fetch(`https://api.github.com${path.startsWith("/") ? path : `/${path}`}`, {
+    method: "GET",
+    headers: {
+      Accept: accept,
+      "X-GitHub-Api-Version": "2022-11-28",
+      "User-Agent": "SHIPWISE.ai",
+    },
+  });
+  if (!response.ok) {
+    const detail = await response.text();
+    console.error(`Public GitHub request failed [${response.status}]: ${detail.slice(0, 500)}`);
+    throw Object.assign(new Error(response.status === 404
+      ? "This repository is not publicly accessible. Connect your GitHub account for private repositories."
+      : `GitHub request failed (${response.status}).`), { status: response.status });
+  }
+  return response;
+}
+
+export async function publicGitHubJson<T>(path: string): Promise<T> {
+  return await (await publicGitHubRequest(path)).json() as T;
+}
+
 export async function githubRequest(
   connectionKey: string,
   path: string,

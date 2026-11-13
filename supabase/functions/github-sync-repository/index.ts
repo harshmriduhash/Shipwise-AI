@@ -1,7 +1,5 @@
 import { getConnectionKeyForUser } from "../_shared/appUserConnections.ts";
-import { githubJson, ensureRepositoryWebhook } from "../_shared/githubApi.ts";
-import { GITHUB_SCOPES } from "../_shared/appUserScopes.ts";
-import { callAsAppUser } from "../_shared/appUserConnector.ts";
+import { githubJson, ensureRepositoryWebhook, publicGitHubJson } from "../_shared/githubApi.ts";
 import { authenticatedUser, adminClient, errorResponse, jsonResponse, preflightResponse, readJson } from "../_shared/http.ts";
 
 type GitHubRepository = {
@@ -42,10 +40,12 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "Enter a valid GitHub repository owner and name." }, 400);
     }
     const key = await getConnectionKeyForUser(user.id, "github");
-    if (!key) return jsonResponse({ error: "Connect your GitHub account before adding repositories.", reconnectRequired: false }, 409);
     const encodedOwner = encodeURIComponent(owner);
     const encodedRepo = encodeURIComponent(repo);
-    const repository = await githubJson<GitHubRepository>(key, `/repos/${encodedOwner}/${encodedRepo}`);
+    const repository = key
+      ? await githubJson<GitHubRepository>(key, `/repos/${encodedOwner}/${encodedRepo}`)
+      : await publicGitHubJson<GitHubRepository>(`/repos/${encodedOwner}/${encodedRepo}`);
+    if (!key && repository.private) return jsonResponse({ error: "Private repositories require a connected GitHub account." }, 403);
     const client = adminClient();
     const { data: savedRepo, error: repoError } = await client.from("repositories").upsert({
       user_id: user.id,
@@ -60,7 +60,9 @@ Deno.serve(async (req) => {
     }, { onConflict: "user_id,github_repo_id" }).select("id,name,github_url,description,default_branch,github_owner,github_repo,github_repo_id,is_private,created_at").single();
     if (repoError || !savedRepo) throw repoError ?? new Error("Could not save this repository");
 
-    const openPullRequests = await githubJson<GitHubPullRequest[]>(key, `/repos/${encodedOwner}/${encodedRepo}/pulls?state=open&per_page=100`);
+    const openPullRequests = key
+      ? await githubJson<GitHubPullRequest[]>(key, `/repos/${encodedOwner}/${encodedRepo}/pulls?state=open&per_page=100`)
+      : await publicGitHubJson<GitHubPullRequest[]>(`/repos/${encodedOwner}/${encodedRepo}/pulls?state=open&per_page=100`);
     const { error: prError } = await client.from("pull_requests").upsert(
       openPullRequests.map(pr => ({
         repo_id: savedRepo.id,
@@ -85,6 +87,7 @@ Deno.serve(async (req) => {
     let webhookReady = false;
     let webhookNotice: string | null = null;
     try {
+      if (!key) throw new Error("Connect a GitHub account to create this webhook automatically, or configure it manually in the repository settings.");
       await ensureRepositoryWebhook(key, repository.owner.login, repository.name);
       webhookReady = true;
     } catch (error) {
