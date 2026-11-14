@@ -1,348 +1,191 @@
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
-import {
-  Shield, GitPullRequest, TestTube, Activity,
-  ChevronRight, AlertTriangle, CheckCircle, Clock,
-  FileCode, Bell, LogOut, Zap, ArrowRight, Settings, Github
-} from "lucide-react";
+import { motion } from "framer-motion";
+import { AlertCircle, ArrowRight, Clock3, FileCode2, Github, GitPullRequest, LogOut, RefreshCw, Settings, ShieldCheck, Sparkles, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
-import ProgressBar from "@/components/ui/ProgressBar";
-import AIThinking from "@/components/ui/AIThinking";
-import SkeletonCard, { SkeletonList } from "@/components/ui/SkeletonCard";
+import { supabase } from "@/integrations/supabase/client";
+import type { Tables } from "@/integrations/supabase/types";
+import SkeletonCard from "@/components/ui/SkeletonCard";
 import EmptyState from "@/components/ui/EmptyState";
-import ScrollReveal from "@/components/ui/ScrollReveal";
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+import { toast } from "sonner";
 
-const mockPRs = [
-  { id: 1, title: "feat: add payment processing module", author: "sarah.dev", risk: 82, tests: 3, time: "2m ago", files: 12, additions: 340, deletions: 45 },
-  { id: 2, title: "fix: resolve auth token refresh bug", author: "mike.eng", risk: 45, tests: 5, time: "15m ago", files: 4, additions: 89, deletions: 23 },
-  { id: 3, title: "chore: update dependencies", author: "bot", risk: 12, tests: 1, time: "1h ago", files: 2, additions: 156, deletions: 143 },
-  { id: 4, title: "feat: user profile settings page", author: "alex.ui", risk: 34, tests: 4, time: "3h ago", files: 8, additions: 220, deletions: 30 },
-];
+type Repository = Pick<Tables<"repositories">, "id" | "name" | "github_url">;
+type PullRequest = Tables<"pull_requests">;
 
-const mockActivity = [
-  { type: "risk", message: "PR #142 risk score increased to 82", time: "2m ago", icon: AlertTriangle },
-  { type: "test", message: "5 test suggestions generated for PR #139", time: "15m ago", icon: TestTube },
-  { type: "success", message: "PR #137 shipped successfully", time: "1h ago", icon: CheckCircle },
-  { type: "analysis", message: "New PR #142 analysis started", time: "2h ago", icon: Activity },
-];
-
-const testSuggestions = [
-  { id: 1, text: "Test payment flow with expired credit card", priority: "critical", checked: false },
-  { id: 2, text: "Verify webhook retry on timeout", priority: "high", checked: true },
-  { id: 3, text: "Test concurrent payment sessions", priority: "high", checked: false },
-  { id: 4, text: "Validate currency conversion edge cases", priority: "medium", checked: false },
-  { id: 5, text: "Check refund flow for partial payments", priority: "medium", checked: true },
-];
-
-const getRiskColor = (risk: number) => {
-  if (risk >= 70) return "text-destructive";
-  if (risk >= 40) return "text-warning";
+function riskColor(value: number | null) {
+  if (value === null) return "text-muted-foreground";
+  if (value >= 70) return "text-destructive";
+  if (value >= 40) return "text-warning";
   return "text-primary";
-};
+}
 
-const getRiskBg = (risk: number) => {
-  if (risk >= 70) return "bg-destructive/10";
-  if (risk >= 40) return "bg-warning/10";
-  return "bg-primary/10";
-};
+function formatAge(value: string) {
+  const minutes = Math.max(0, Math.floor((Date.now() - new Date(value).getTime()) / 60_000));
+  if (minutes < 60) return `${minutes}m ago`;
+  if (minutes < 1440) return `${Math.floor(minutes / 60)}h ago`;
+  return `${Math.floor(minutes / 1440)}d ago`;
+}
 
 const Dashboard = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
-  const [checks, setChecks] = useState(testSuggestions.map(t => t.checked));
+  const [repositories, setRepositories] = useState<Repository[]>([]);
+  const [pullRequests, setPullRequests] = useState<PullRequest[]>([]);
   const [loading, setLoading] = useState(true);
-  const [analyzing, setAnalyzing] = useState(false);
-  const overallRisk = 58;
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 1500);
-    return () => clearTimeout(timer);
+  const loadData = useCallback(async (showSpinner: boolean) => {
+    if (showSpinner) setRefreshing(true);
+    const { data: repoData, error: repoError } = await supabase.from("repositories")
+      .select("id,name,github_url")
+      .order("created_at", { ascending: false });
+    if (repoError) {
+      toast.error("Could not load repositories.");
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
+    const repoRows = (repoData ?? []) as Repository[];
+    setRepositories(repoRows);
+    if (!repoRows.length) {
+      setPullRequests([]);
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
+    const { data: prData, error: prError } = await supabase.from("pull_requests")
+      .select("*")
+      .in("repo_id", repoRows.map(repository => repository.id))
+      .eq("github_state", "open")
+      .order("updated_at", { ascending: false });
+    if (prError) toast.error("Could not load pull requests.");
+    else setPullRequests((prData ?? []) as PullRequest[]);
+    setLoading(false);
+    setRefreshing(false);
   }, []);
 
-  const handleAnalyze = () => {
-    setAnalyzing(true);
-    setTimeout(() => setAnalyzing(false), 3000);
-  };
+  useEffect(() => {
+    void loadData(false);
+  }, [loadData]);
+
+  const repoFor = (repoId: string) => repositories.find(repository => repository.id === repoId);
+  const analyzed = pullRequests.filter(pr => pr.analysis_status === "complete");
+  const highRisk = analyzed.filter(pr => (pr.risk_score ?? 0) >= 70).length;
+  const averageRisk = analyzed.length
+    ? Math.round(analyzed.reduce((total, pr) => total + (pr.risk_score ?? 0), 0) / analyzed.length)
+    : null;
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Top bar */}
-      <div className="fixed top-0 left-0 right-0 z-50 glass border-b border-border/30">
+      <header className="fixed top-0 left-0 right-0 z-50 glass border-b border-border/30">
         <div className="container mx-auto px-6 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center">
-                <Zap className="w-3.5 h-3.5 text-primary-foreground" />
-              </div>
-              <span className="text-base font-bold text-foreground">
-                SHIPWISE<span className="gradient-text">.ai</span>
-              </span>
-            </div>
-            <span className="text-xs text-muted-foreground hidden sm:inline">acme-corp/web-platform</span>
+          <div className="flex items-center gap-2">
+            <span className="w-7 h-7 rounded-md bg-primary flex items-center justify-center"><Zap className="w-3.5 h-3.5 text-primary-foreground" /></span>
+            <span className="text-base font-bold text-foreground">SHIPWISE<span className="gradient-text">.ai</span></span>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={() => navigate("/settings")} className="text-muted-foreground h-8 w-8 p-0">
-              <Settings className="w-3.5 h-3.5" />
-            </Button>
-            <span className="text-xs text-muted-foreground hidden sm:inline">{user?.email}</span>
-            <Button variant="ghost" size="sm" onClick={signOut} className="text-muted-foreground h-8 w-8 p-0">
-              <LogOut className="w-3.5 h-3.5" />
-            </Button>
+            <span className="hidden sm:inline text-xs text-muted-foreground">{user?.email}</span>
+            <Button variant="ghost" size="sm" aria-label="Repository settings" onClick={() => navigate("/settings")} className="text-muted-foreground h-8 w-8 p-0"><Settings className="w-3.5 h-3.5" /></Button>
+            <Button variant="ghost" size="sm" aria-label="Sign out" onClick={signOut} className="text-muted-foreground h-8 w-8 p-0"><LogOut className="w-3.5 h-3.5" /></Button>
           </div>
         </div>
-      </div>
+      </header>
 
-      <div className="pt-20 pb-12 px-6">
+      <main className="pt-20 pb-12 px-6">
         <div className="container mx-auto max-w-6xl">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-7">
             <div>
-              <h1 className="text-xl font-bold text-foreground">Release Dashboard</h1>
-              <p className="text-xs text-muted-foreground mt-0.5">main branch · last synced 2m ago</p>
+              <p className="text-[10px] uppercase tracking-[0.12em] text-primary mb-2">Quality intelligence</p>
+              <h1 className="text-2xl font-bold text-foreground">Pull request overview</h1>
+              <p className="text-xs text-muted-foreground mt-1">Live open pull requests from your connected repositories.</p>
             </div>
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={() => navigate("/settings")} className="border-border/50 text-muted-foreground text-xs h-8">
                 <Github className="w-3.5 h-3.5 mr-1.5" /> Repositories
               </Button>
-              <Button variant="outline" size="sm" className="border-border/50 text-muted-foreground text-xs h-8">
-                <Bell className="w-3.5 h-3.5 mr-1.5" /> Alerts
-              </Button>
-              <Button size="sm" onClick={handleAnalyze} className="glow-sm text-xs h-8" disabled={analyzing}>
-                {analyzing ? (
-                  <span className="flex items-center gap-2">
-                    <div className="flex gap-0.5">
-                      {[0,1,2].map(i => (
-                        <div key={i} className="w-1 h-1 rounded-full bg-primary-foreground animate-ai-pulse" style={{ animationDelay: `${i*0.2}s` }} />
-                      ))}
-                    </div>
-                    Analyzing
-                  </span>
-                ) : (
-                  <><GitPullRequest className="w-3.5 h-3.5 mr-1.5" /> Analyze PR</>
-                )}
+              <Button variant="ghost" size="sm" aria-label="Refresh pull requests" onClick={() => void loadData(true)} disabled={refreshing} className="h-8 w-8 p-0">
+                <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
               </Button>
             </div>
           </div>
 
-          {/* AI Analysis Banner */}
-          <AnimatePresence>
-            {analyzing && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                className="mb-6"
-              >
-                <div className="glass rounded-xl p-6 flex items-center justify-center">
-                  <AIThinking label="AI is analyzing your latest changes" />
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
           {loading ? (
-            <div className="grid lg:grid-cols-3 gap-4 mb-4">
-              <SkeletonCard />
-              <SkeletonCard />
-              <SkeletonCard />
-            </div>
+            <div className="grid md:grid-cols-3 gap-4 mb-8"><SkeletonCard /><SkeletonCard /><SkeletonCard /></div>
           ) : (
             <>
-              {/* Top Row */}
-              <div className="grid lg:grid-cols-3 gap-4 mb-4">
-                {/* Risk Score */}
-                <ScrollReveal>
-                  <div className="glass rounded-xl p-5 h-full">
-                    <h3 className="text-xs font-medium text-muted-foreground mb-3">Overall Risk Score</h3>
-                    <div className="flex items-center gap-5">
-                      <div className="relative w-24 h-24">
-                        <svg className="w-24 h-24 -rotate-90" viewBox="0 0 100 100">
-                          <circle cx="50" cy="50" r="42" fill="none" stroke="hsl(var(--muted))" strokeWidth="6" />
-                          <motion.circle
-                            cx="50" cy="50" r="42" fill="none"
-                            stroke="hsl(var(--warning))" strokeWidth="6"
-                            strokeLinecap="round"
-                            initial={{ strokeDasharray: "0 264" }}
-                            animate={{ strokeDasharray: `${overallRisk * 2.64} 264` }}
-                            transition={{ duration: 1, ease: "easeOut" }}
-                          />
-                        </svg>
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <span className="text-2xl font-bold text-warning">{overallRisk}</span>
-                        </div>
-                      </div>
-                      <div className="space-y-3 flex-1">
-                        <ProgressBar value={42} label="Logic" variant="warning" />
-                        <ProgressBar value={68} label="Integration" variant="warning" />
-                        <ProgressBar value={35} label="Regression" variant="default" />
-                      </div>
-                    </div>
-                  </div>
-                </ScrollReveal>
-
-                {/* Release Readiness */}
-                <ScrollReveal delay={0.1}>
-                  <div className="glass rounded-xl p-5 h-full">
-                    <h3 className="text-xs font-medium text-muted-foreground mb-3">Release Readiness</h3>
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="w-9 h-9 rounded-lg bg-warning/10 flex items-center justify-center">
-                        <AlertTriangle className="w-4 h-4 text-warning" />
-                      </div>
-                      <div>
-                        <p className="text-base font-bold text-warning">Caution</p>
-                        <p className="text-[10px] text-muted-foreground">Review high-risk PRs before shipping</p>
-                      </div>
-                    </div>
-                    <div className="space-y-1.5 text-xs">
-                      {[
-                        { label: "Open PRs", value: "4", color: "text-foreground" },
-                        { label: "High Risk", value: "1", color: "text-destructive" },
-                        { label: "Tests Passing", value: "92%", color: "text-primary" },
-                      ].map(item => (
-                        <div key={item.label} className="flex items-center justify-between p-2 rounded-lg bg-secondary/50">
-                          <span className="text-muted-foreground">{item.label}</span>
-                          <span className={`font-medium ${item.color}`}>{item.value}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </ScrollReveal>
-
-                {/* Quick Stats */}
-                <ScrollReveal delay={0.2}>
-                  <div className="glass rounded-xl p-5 h-full">
-                    <h3 className="text-xs font-medium text-muted-foreground mb-3">This Sprint</h3>
-                    <div className="grid grid-cols-2 gap-3">
-                      {[
-                        { label: "PRs Analyzed", value: "24", icon: FileCode },
-                        { label: "Bugs Caught", value: "7", icon: Shield },
-                        { label: "Tests Suggested", value: "89", icon: TestTube },
-                        { label: "Time Saved", value: "18h", icon: Clock },
-                      ].map((stat) => (
-                        <motion.div
-                          key={stat.label}
-                          whileHover={{ scale: 1.03 }}
-                          className="p-3 rounded-lg bg-secondary/50 text-center cursor-default"
-                        >
-                          <stat.icon className="w-3.5 h-3.5 text-primary mx-auto mb-1" />
-                          <p className="text-lg font-bold text-foreground">{stat.value}</p>
-                          <p className="text-[10px] text-muted-foreground">{stat.label}</p>
-                        </motion.div>
-                      ))}
-                    </div>
-                  </div>
-                </ScrollReveal>
-              </div>
-
-              {/* Bottom Row */}
-              <div className="grid lg:grid-cols-3 gap-4">
-                {/* PR Insights */}
-                <div className="lg:col-span-2 glass rounded-xl p-5">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-xs font-medium text-muted-foreground">PR Insights</h3>
-                    <Button variant="ghost" size="sm" className="text-xs text-muted-foreground h-7">
-                      View All <ChevronRight className="w-3 h-3 ml-1" />
-                    </Button>
-                  </div>
-                  <div className="space-y-2">
-                    {mockPRs.map((pr) => (
-                      <HoverCard key={pr.id}>
-                        <HoverCardTrigger asChild>
-                          <motion.div
-                            whileHover={{ x: 2 }}
-                            onClick={() => navigate(`/pr/${pr.id}`)}
-                            className="flex items-center gap-3 p-3 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors cursor-pointer"
-                          >
-                            <div className={`w-9 h-9 rounded-lg ${getRiskBg(pr.risk)} flex items-center justify-center`}>
-                              <span className={`text-xs font-bold ${getRiskColor(pr.risk)}`}>{pr.risk}</span>
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-foreground truncate">{pr.title}</p>
-                              <p className="text-[10px] text-muted-foreground">by {pr.author} · {pr.time}</p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-[10px] text-muted-foreground">{pr.tests} tests</span>
-                              <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
-                            </div>
-                          </motion.div>
-                        </HoverCardTrigger>
-                        <HoverCardContent className="w-64 glass" side="left">
-                          <div className="space-y-2">
-                            <p className="text-sm font-medium text-foreground">{pr.title}</p>
-                            <div className="grid grid-cols-3 gap-2 text-xs">
-                              <div><span className="text-muted-foreground">Files</span><br /><span className="font-medium text-foreground">{pr.files}</span></div>
-                              <div><span className="text-muted-foreground">Added</span><br /><span className="font-medium text-primary">+{pr.additions}</span></div>
-                              <div><span className="text-muted-foreground">Removed</span><br /><span className="font-medium text-destructive">-{pr.deletions}</span></div>
-                            </div>
-                          </div>
-                        </HoverCardContent>
-                      </HoverCard>
-                    ))}
-                  </div>
+              <section className="grid sm:grid-cols-3 gap-6 py-5 border-y border-border/60 mb-8" aria-label="Pull request metrics">
+                <div className="flex items-center gap-3">
+                  <GitPullRequest className="w-5 h-5 text-muted-foreground" />
+                  <div><p className="text-xl font-semibold text-foreground">{pullRequests.length}</p><p className="text-[11px] text-muted-foreground">Open pull requests</p></div>
                 </div>
-
-                {/* Right column */}
-                <div className="space-y-4">
-                  {/* Test Recommendations */}
-                  <div className="glass rounded-xl p-5">
-                    <h3 className="text-xs font-medium text-muted-foreground mb-3">Test Recommendations</h3>
-                    <div className="space-y-1.5">
-                      {testSuggestions.map((test, i) => (
-                        <motion.label
-                          key={test.id}
-                          whileHover={{ x: 2 }}
-                          className="flex items-start gap-2.5 p-2 rounded-lg hover:bg-secondary/30 cursor-pointer transition-colors"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={checks[i]}
-                            onChange={() => setChecks(prev => prev.map((c, idx) => idx === i ? !c : c))}
-                            className="mt-0.5 rounded border-border accent-primary"
-                          />
-                          <div>
-                            <p className={`text-xs ${checks[i] ? "line-through text-muted-foreground" : "text-foreground"}`}>{test.text}</p>
-                            <span className={`text-[10px] font-medium ${
-                              test.priority === "critical" ? "text-destructive" :
-                              test.priority === "high" ? "text-warning" : "text-muted-foreground"
-                            }`}>{test.priority}</span>
-                          </div>
-                        </motion.label>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Activity Feed */}
-                  <div className="glass rounded-xl p-5">
-                    <h3 className="text-xs font-medium text-muted-foreground mb-3">Activity</h3>
-                    <div className="space-y-2.5">
-                      {mockActivity.map((item, i) => (
-                        <motion.div
-                          key={i}
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: i * 0.1 }}
-                          className="flex items-start gap-2.5"
-                        >
-                          <div className="w-6 h-6 rounded-md bg-secondary/50 flex items-center justify-center shrink-0 mt-0.5">
-                            <item.icon className="w-3 h-3 text-primary" />
-                          </div>
-                          <div>
-                            <p className="text-xs text-foreground">{item.message}</p>
-                            <p className="text-[10px] text-muted-foreground">{item.time}</p>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                  </div>
+                <div className="flex items-center gap-3">
+                  <ShieldCheck className="w-5 h-5 text-muted-foreground" />
+                  <div><p className="text-xl font-semibold text-foreground">{averageRisk === null ? "—" : averageRisk}</p><p className="text-[11px] text-muted-foreground">Average risk score {averageRisk === null ? "· analyze a PR to begin" : `· ${highRisk} high risk`}</p></div>
                 </div>
-              </div>
+                <div className="flex items-center gap-3">
+                  <Github className="w-5 h-5 text-muted-foreground" />
+                  <div><p className="text-xl font-semibold text-foreground">{repositories.length}</p><p className="text-[11px] text-muted-foreground">Connected repositories</p></div>
+                </div>
+              </section>
+
+              {repositories.length === 0 ? (
+                <EmptyState type="generic" title="Connect a repository" description="Add a public repository, or connect GitHub first for private access. Its open pull requests will appear here." action={{ label: "Open repository settings", onClick: () => navigate("/settings") }} />
+              ) : pullRequests.length === 0 ? (
+                <EmptyState type="generic" title="No open pull requests" description="There are no open pull requests in the connected repositories. Refresh after opening a pull request on GitHub." action={{ label: "Manage repositories", onClick: () => navigate("/settings") }} />
+              ) : (
+                <section aria-labelledby="pull-requests-heading">
+                  <div className="flex items-center justify-between border-b border-border/60 pb-3 mb-1">
+                    <h2 id="pull-requests-heading" className="text-sm font-semibold text-foreground">Open pull requests <span className="text-muted-foreground font-normal">({pullRequests.length})</span></h2>
+                    <span className="text-[10px] text-muted-foreground">Updated from GitHub</span>
+                  </div>
+                  <div className="divide-y divide-border/50">
+                    {pullRequests.map((pr, index) => {
+                      const repository = repoFor(pr.repo_id);
+                      return (
+                        <motion.button
+                          type="button"
+                          key={pr.id}
+                          initial={{ opacity: 0, y: 6 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: Math.min(index * 0.025, 0.2) }}
+                          onClick={() => navigate(`/pr/${pr.id}`)}
+                          className="w-full flex items-center gap-3 text-left py-4 px-2 hover:bg-secondary/30 transition-colors group"
+                        >
+                          <span className={`w-10 h-10 shrink-0 flex items-center justify-center rounded-lg bg-secondary/50 font-mono text-sm font-semibold ${riskColor(pr.risk_score)}`}>
+                            {pr.risk_score === null ? <Sparkles className="w-4 h-4" /> : pr.risk_score}
+                          </span>
+                          <span className="flex-1 min-w-0">
+                            <span className="flex items-center gap-2 flex-wrap">
+                              <span className="text-sm font-medium text-foreground truncate">{pr.title}</span>
+                              <span className="text-[10px] text-muted-foreground shrink-0">#{pr.github_pr_number}</span>
+                            </span>
+                            <span className="flex items-center gap-2 mt-1 text-[10px] text-muted-foreground flex-wrap">
+                              <span>{repository?.name ?? "GitHub repository"}</span>
+                              <span>·</span><span>{pr.author ?? "Unknown author"}</span>
+                              <span>·</span><span className="inline-flex items-center gap-1"><FileCode2 className="w-3 h-3" />{pr.files_changed ?? 0} files</span>
+                              <span>·</span><span className="inline-flex items-center gap-1"><Clock3 className="w-3 h-3" />{formatAge(pr.updated_at)}</span>
+                            </span>
+                          </span>
+                          <span className="hidden sm:block text-right mr-2">
+                            <span className="block text-[10px] text-muted-foreground">{pr.analysis_status === "complete" ? "Analysis ready" : pr.analysis_status === "failed" ? "Analysis needs attention" : "Not analyzed"}</span>
+                            <span className="block text-[10px] text-muted-foreground mt-1">+{pr.additions ?? 0} / −{pr.deletions ?? 0}</span>
+                          </span>
+                          <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                        </motion.button>
+                      );
+                    })}
+                  </div>
+                </section>
+              )}
+
+              {pullRequests.some(pr => pr.analysis_status === "failed") && (
+                <p className="flex items-center gap-2 text-[11px] text-muted-foreground mt-5"><AlertCircle className="w-3.5 h-3.5 text-warning" />Some analyses need attention. Open a pull request to retry its analysis.</p>
+              )}
             </>
           )}
         </div>
-      </div>
+      </main>
     </div>
   );
 };
